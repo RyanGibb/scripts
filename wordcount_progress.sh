@@ -5,20 +5,18 @@ cd "$1"
 log="$(git log --pretty=format:'%h %ad' --date=iso-strict)"
 
 
-prev_hash="$(git rev-parse HEAD)"
-git checkout master
+prev_hash="$(git status | head -1 | awk '{print($NF) }')"
 
 echo "wordcount,timestamp" > wordcount_timestamps.csv
 while IFS= read -r line; do
 	hash="$(echo "$line" | awk '{print $1}')"
 	time="$(echo "$line" | awk '{print $2}')"
-	git checkout "$hash" &> /dev/null
+	git checkout "$hash" || exit 1
 	wordcount="$(texcount main.tex | grep -P "Words in text*" | awk '{ print $4 }')"
 	echo "$wordcount,$time" >> wordcount_timestamps.csv
-	echo "$wordcount,$time"
 done <<< "$log"
 
-git checkout "$prev_hash"
+git checkout "$prev_hash" | exit 1
 
 echo "
 import csv
@@ -47,3 +45,4 @@ plt.xticks(rotation=45)
 plt.xlabel('timestamp')
 plt.ylabel('wordcount')
 plt.savefig('wordcount_progress.pdf')" | python3
+
